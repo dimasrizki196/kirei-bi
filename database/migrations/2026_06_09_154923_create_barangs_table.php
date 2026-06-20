@@ -1,0 +1,35 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up()
+    {
+        Schema::create('barangs', function (Blueprint $table) {
+            $table->id('barang_id');
+            $table->string('nama_barang');
+            $table->string('type');
+            $table->unsignedBigInteger('pemasok_id');
+            $table->integer('stok_saat_ini')->default(0);
+            $table->bigInteger('harga')->default(0);
+            $table->integer('batas_minimum_stok')->default(5);
+            $table->timestamps();
+
+            $table->foreign('pemasok_id')->references('pemasok_id')->on('pemasoks')->onDelete('cascade');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('barangs');
+    }
+};
