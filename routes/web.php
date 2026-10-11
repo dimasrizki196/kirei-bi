@@ -25,7 +25,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // View Produk (Keduanya bisa melihat daftar produk)
         Route::get('/kelola-produk', [BarangController::class, 'index'])->name('produk.index');
-        Route::get('/kelola-produk/{kelola_produk}', [BarangController::class, 'show'])->name('produk.show');
+
+        // View Transaksi (Keduanya bisa melihat daftar transaksi)
         Route::get('/transaksi', [TransaksiController::class, 'index'])->name('transaksi.index');
     });
 

@@ -12,8 +12,8 @@ import {
     User,
     LogOut,
     ChevronDown,
-    Users, // Icon untuk Kelola User
-    Truck, // Icon untuk Kelola Pemasok
+    Users,
+    Truck,
 } from "lucide-react";
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -85,14 +85,12 @@ export default function AuthenticatedLayout({ header, children }) {
     // 3. PENENTUAN MENU BERDASARKAN ROLE
     const displayedMenus = user.role === "manager" ? managerMenus : adminMenus;
 
-    // Capitalize huruf pertama untuk label teks
     const roleLabel = user.role
         ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
         : "Admin";
 
     return (
         <div className="h-screen bg-gray-50 flex overflow-hidden">
-            {/* Overlay untuk Mobile */}
             {isSidebarOpen && (
                 <div
                     className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
@@ -106,14 +104,13 @@ export default function AuthenticatedLayout({ header, children }) {
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 } flex flex-col`}
             >
-                {/* Logo Area */}
                 <div className="h-20 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
                     <Link
                         href={route("dashboard")}
                         className="flex items-center gap-3"
                     >
                         <div className="bg-sky-100 p-2 rounded-xl">
-                            <ApplicationLogo className="h-8 w-8 fill-current text-sky-600" />
+                            <ApplicationLogo className="h-12 w-12 fill-current text-sky-600" />
                         </div>
                         <span className="text-xl font-bold text-slate-800 tracking-tight">
                             Kirei Shop <span className="text-sky-600">BI</span>
@@ -127,7 +124,6 @@ export default function AuthenticatedLayout({ header, children }) {
                     </button>
                 </div>
 
-                {/* Menu Area */}
                 <div className="p-4 space-y-1 overflow-y-auto flex-1">
                     <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 px-3 mt-4">
                         Menu {roleLabel}
@@ -157,7 +153,6 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col min-w-0 h-full">
-                {/* TOP HEADER */}
                 <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-30 shrink-0">
                     <div className="flex items-center gap-4">
                         <button
@@ -174,7 +169,6 @@ export default function AuthenticatedLayout({ header, children }) {
                         )}
                     </div>
 
-                    {/* Profil User Dropdown */}
                     <div className="flex items-center">
                         <Dropdown>
                             <Dropdown.Trigger>
@@ -207,27 +201,27 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     <User size={16} /> Profil Saya
                                 </Dropdown.Link>
-                                <Dropdown.Link
+
+                                {/* PERUBAHAN KRUSIAL: Menggunakan Link murni dari Inertia */}
+                                <Link
                                     href={route("logout")}
                                     method="post"
                                     as="button"
-                                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-left text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
                                 >
                                     <LogOut size={16} /> Keluar
-                                </Dropdown.Link>
+                                </Link>
                             </Dropdown.Content>
                         </Dropdown>
                     </div>
                 </header>
 
-                {/* PAGE CONTENT */}
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                     {header && (
                         <div className="sm:hidden mb-6 text-xl font-semibold text-gray-800">
                             {header}
                         </div>
                     )}
-
                     {children}
                 </main>
             </div>

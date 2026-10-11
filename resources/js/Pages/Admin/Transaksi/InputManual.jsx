@@ -1,4 +1,4 @@
-import { useForm } from "@inertiajs/react";
+import { useForm, usePage } from "@inertiajs/react";
 import {
     Save,
     Search,
@@ -7,10 +7,15 @@ import {
     Store,
     Calendar,
     ShoppingCart,
+    CheckCircle2,
+    AlertCircle,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 export default function InputManual({ barangs, tokos, pembelis }) {
+    // Ambil pesan flash dari props global
+    const { flash } = usePage().props;
+
     const daftarKotaUnik = [...new Set(pembelis?.map((p) => p.kota))];
     const daftarAlamatUnik = [...new Set(pembelis?.map((p) => p.alamat))];
 
@@ -66,15 +71,32 @@ export default function InputManual({ barangs, tokos, pembelis }) {
         e.preventDefault();
         formManual.post(route("transaksi.store"), {
             preserveScroll: true,
-            onSuccess: () => {
-                formManual.reset("barang_id", "jumlah_beli", "total_harga");
-                setSearchBarang("");
+            onSuccess: (page) => {
+                // KUNCI: Hanya reset form jika tidak ada error terkait stok
+                if (!page.props.flash.error) {
+                    formManual.reset("barang_id", "jumlah_beli", "total_harga");
+                    setSearchBarang("");
+                }
             },
         });
     };
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 w-full mx-auto">
+            {/* AREA NOTIFIKASI */}
+            {flash?.message && (
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-start gap-3 shadow-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">{flash.message}</p>
+                </div>
+            )}
+            {flash?.error && (
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl flex items-start gap-3 shadow-sm">
+                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+                    <p className="text-sm font-medium">{flash.error}</p>
+                </div>
+            )}
+
             {/* HEADER */}
             <div className="mb-4 sm:mb-6 border-b border-gray-100 pb-3 sm:pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -278,7 +300,9 @@ export default function InputManual({ barangs, tokos, pembelis }) {
                                                     {b.nama_barang}
                                                 </span>
                                                 <div className="flex flex-col items-end shrink-0">
-                                                    <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                                                    <span
+                                                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${b.stok_saat_ini <= 0 ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-500"}`}
+                                                    >
                                                         Stok: {b.stok_saat_ini}
                                                     </span>
                                                 </div>

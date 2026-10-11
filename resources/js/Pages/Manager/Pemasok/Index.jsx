@@ -1,15 +1,34 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm } from "@inertiajs/react";
 import { useState } from "react";
-import { Plus, Edit2, Trash2, X, Search, Truck } from "lucide-react";
+import { createPortal } from "react-dom"; // <-- Tambahkan ini
+import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal"; // <-- Tambahkan ini
+import {
+    Plus,
+    Edit2,
+    Trash2,
+    X,
+    Search,
+    Truck,
+    ChevronLeft, // <-- Tambahkan ini
+    ChevronRight, // <-- Tambahkan ini
+} from "lucide-react";
 
 export default function PemasokIndex({ pemasoks }) {
     const [searchQuery, setSearchQuery] = useState("");
 
-    // State untuk Modal
+    // 1. STATE UNTUK PAGINASI
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10; // Jumlah data per halaman
+
+    // State untuk Modal Form
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
+
+    // 2. STATE UNTUK MODAL HAPUS
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     // useForm dari Inertia menggantikan axios & useState manual
     const {
@@ -30,9 +49,22 @@ export default function PemasokIndex({ pemasoks }) {
         item.type_pemasok.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
-    // Fungsi Buka/Tutup Modal
+    // 3. LOGIKA PEMOTONGAN DATA (PAGINASI)
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentData = filteredData.slice(
+        startIndex,
+        startIndex + itemsPerPage,
+    );
+
+    const handleSearch = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset ke halaman 1 saat mencari
+    };
+
+    // Fungsi Buka/Tutup Modal Form
     const openCreateModal = () => {
-        reset(); // Bersihkan form
+        reset();
         setIsEditing(false);
         setCurrentId(null);
         setIsModalOpen(true);
@@ -47,16 +79,16 @@ export default function PemasokIndex({ pemasoks }) {
 
     const closeModal = () => {
         setIsModalOpen(false);
-        reset(); // Hapus isian form dan error
+        reset();
     };
 
-    // Fungsi Eksekusi Submit (Sangat ringkas berkat Inertia)
+    // Fungsi Eksekusi Submit Form
     const handleSubmit = (e) => {
         e.preventDefault();
 
         if (isEditing) {
             put(`/admin/pemasok/${currentId}`, {
-                onSuccess: () => closeModal(), // Otomatis tutup modal jika sukses
+                onSuccess: () => closeModal(),
             });
         } else {
             post("/admin/pemasok", {
@@ -65,11 +97,28 @@ export default function PemasokIndex({ pemasoks }) {
         }
     };
 
-    // Fungsi Hapus
-    const handleDelete = (id, nama) => {
-        if (window.confirm(`Yakin ingin menghapus pemasok "${nama}"?`)) {
-            destroy(`/admin/pemasok/${id}`);
-        }
+    // 4. FUNGSI UNTUK MEMBUKA MODAL HAPUS
+    const confirmDelete = (pemasok) => {
+        setItemToDelete(pemasok);
+        setIsDeleteModalOpen(true);
+    };
+
+    // 5. FUNGSI EKSEKUSI HAPUS
+    const executeDelete = () => {
+        if (!itemToDelete) return;
+
+        destroy(`/admin/pemasok/${itemToDelete.pemasok_id}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setItemToDelete(null);
+
+                // Jika menghapus item terakhir di halaman, mundur 1 halaman
+                if (currentData.length === 1 && currentPage > 1) {
+                    setCurrentPage((prev) => prev - 1);
+                }
+            },
+        });
     };
 
     return (
@@ -103,7 +152,7 @@ export default function PemasokIndex({ pemasoks }) {
                                 type="text"
                                 placeholder="Cari nama pemasok..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={handleSearch} // Pakai fungsi handleSearch
                                 className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"
                             />
                         </div>
@@ -120,7 +169,7 @@ export default function PemasokIndex({ pemasoks }) {
                 </div>
 
                 {/* Tabel Data */}
-                <div className="overflow-x-auto w-full">
+                <div className="overflow-x-auto w-full custom-scrollbar">
                     <table className="w-full text-sm text-left whitespace-nowrap">
                         <thead className="bg-white text-gray-400 uppercase font-bold border-b border-gray-100">
                             <tr>
@@ -136,8 +185,9 @@ export default function PemasokIndex({ pemasoks }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filteredData.length > 0 ? (
-                                filteredData.map((pemasok) => (
+                            {/* MAPPING MENGGUNAKAN currentData */}
+                            {currentData.length > 0 ? (
+                                currentData.map((pemasok) => (
                                     <tr
                                         key={pemasok.pemasok_id}
                                         className="hover:bg-slate-50 transition-colors"
@@ -158,12 +208,11 @@ export default function PemasokIndex({ pemasoks }) {
                                             >
                                                 <Edit2 size={16} />
                                             </button>
+
+                                            {/* GANTI ONCLICK MENJADI confirmDelete */}
                                             <button
                                                 onClick={() =>
-                                                    handleDelete(
-                                                        pemasok.pemasok_id,
-                                                        pemasok.type_pemasok,
-                                                    )
+                                                    confirmDelete(pemasok)
                                                 }
                                                 className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Hapus"
@@ -186,77 +235,153 @@ export default function PemasokIndex({ pemasoks }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* 6. FOOTER PAGINASI */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-t border-gray-100 bg-gray-50/30 gap-4">
+                        <span className="text-xs sm:text-sm text-gray-500">
+                            Menampilkan{" "}
+                            <span className="font-bold text-gray-700">
+                                {startIndex + 1}
+                            </span>{" "}
+                            hingga{" "}
+                            <span className="font-bold text-gray-700">
+                                {Math.min(
+                                    startIndex + itemsPerPage,
+                                    filteredData.length,
+                                )}
+                            </span>{" "}
+                            dari{" "}
+                            <span className="font-bold text-gray-700">
+                                {filteredData.length}
+                            </span>{" "}
+                            data
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() =>
+                                    setCurrentPage((prev) =>
+                                        Math.max(prev - 1, 1),
+                                    )
+                                }
+                                disabled={currentPage === 1}
+                                className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+
+                            <div className="px-3 py-1 text-xs sm:text-sm font-semibold bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
+                                {currentPage} / {totalPages}
+                            </div>
+
+                            <button
+                                onClick={() =>
+                                    setCurrentPage((prev) =>
+                                        Math.min(prev + 1, totalPages),
+                                    )
+                                }
+                                disabled={currentPage === totalPages}
+                                className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ========================================================= */}
-            {/* MODAL (TAMBAH / EDIT) */}
+            {/* MODAL FORM (TAMBAH / EDIT) DENGAN PORTAL */}
             {/* ========================================================= */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-bold text-lg text-gray-800">
-                                {isEditing
-                                    ? "Edit Data Pemasok"
-                                    : "Tambah Pemasok Baru"}
-                            </h3>
-                            <button
-                                onClick={closeModal}
-                                className="text-gray-400 hover:text-gray-600 p-1"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                                    Tipe / Nama Pemasok{" "}
-                                    <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    autoFocus
-                                    value={data.type_pemasok}
-                                    onChange={(e) =>
-                                        setData("type_pemasok", e.target.value)
-                                    }
-                                    className={`w-full px-4 py-2.5 border rounded-xl text-sm font-medium ${errors.type_pemasok ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"}`}
-                                    placeholder="Contoh: PT. Bintang Bayi"
-                                />
-                                {errors.type_pemasok && (
-                                    <p className="mt-1 text-xs text-red-500">
-                                        {errors.type_pemasok}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+            {isModalOpen &&
+                createPortal(
+                    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
+                        <div
+                            className="fixed inset-0 -z-10"
+                            onClick={closeModal}
+                        ></div>
+                        <div className="relative z-10 w-full max-w-md mt-10 sm:mt-16 mb-auto bg-white rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-top-8 duration-300 flex flex-col">
+                            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+                                <h3 className="font-bold text-lg text-gray-800">
+                                    {isEditing
+                                        ? "Edit Data Pemasok"
+                                        : "Tambah Pemasok Baru"}
+                                </h3>
                                 <button
-                                    type="button"
                                     onClick={closeModal}
-                                    className="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                                    className="text-gray-400 hover:text-red-500 p-1 transition-colors"
                                 >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {processing && (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    )}
-                                    {processing
-                                        ? "Menyimpan..."
-                                        : "Simpan Data"}
+                                    <X size={20} />
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
+                            <form
+                                onSubmit={handleSubmit}
+                                className="p-5 space-y-4"
+                            >
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                                        Tipe / Nama Pemasok{" "}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        autoFocus
+                                        value={data.type_pemasok}
+                                        onChange={(e) =>
+                                            setData(
+                                                "type_pemasok",
+                                                e.target.value,
+                                            )
+                                        }
+                                        className={`w-full px-4 py-2.5 border rounded-xl text-sm font-medium ${errors.type_pemasok ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"}`}
+                                        placeholder="Contoh: PT. Bintang Bayi"
+                                    />
+                                    {errors.type_pemasok && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                            {errors.type_pemasok}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
+                                        className="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {processing && (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        )}
+                                        {processing
+                                            ? "Menyimpan..."
+                                            : "Simpan Data"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
+
+            {/* 7. SISIPKAN MODAL KONFIRMASI HAPUS */}
+            <ConfirmDeleteModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={executeDelete}
+                processing={processing}
+                title="Hapus Pemasok"
+                message={`Apakah Anda yakin ingin menghapus pemasok "${itemToDelete?.type_pemasok}"?`}
+            />
         </AuthenticatedLayout>
     );
 }

@@ -13,9 +13,7 @@ export default function GuestLayout({ children }) {
             {/* Bagian Logo: Ukuran lingkaran dan logo lebih mungil di HP (h-20), membesar di layar sm (h-24) */}
             <div className="relative z-10 mb-6 sm:mb-8 text-center">
                 <Link href="/" className="inline-block">
-                    <div className="flex items-center justify-center h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-white shadow-lg shadow-kirei-light/50 transition-transform duration-300 hover:scale-105">
-                        <ApplicationLogo className="h-10 w-10 sm:h-12 sm:w-12 fill-current text-kirei-DEFAULT" />
-                    </div>
+                    <ApplicationLogo className="h-20 w-20 sm:h-40 sm:w-40 fill-current text-kirei-DEFAULT" />
                 </Link>
             </div>
 
