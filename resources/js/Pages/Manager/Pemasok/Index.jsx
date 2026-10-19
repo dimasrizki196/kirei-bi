@@ -1,8 +1,8 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm } from "@inertiajs/react";
 import { useState } from "react";
-import { createPortal } from "react-dom"; // <-- Tambahkan ini
-import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal"; // <-- Tambahkan ini
+import { createPortal } from "react-dom";
+import ConfirmDeleteModal from "@/Components/ConfirmDeleteModal";
 import {
     Plus,
     Edit2,
@@ -10,8 +10,8 @@ import {
     X,
     Search,
     Truck,
-    ChevronLeft, // <-- Tambahkan ini
-    ChevronRight, // <-- Tambahkan ini
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 
 export default function PemasokIndex({ pemasoks }) {
@@ -21,7 +21,7 @@ export default function PemasokIndex({ pemasoks }) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10; // Jumlah data per halaman
 
-    // State untuk Modal Form
+    // State untuk Modal Form (Tambah/Edit)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
@@ -82,16 +82,16 @@ export default function PemasokIndex({ pemasoks }) {
         reset();
     };
 
-    // Fungsi Eksekusi Submit Form
+    // Fungsi Eksekusi Submit Form (CUD) menggunakan route() helper
     const handleSubmit = (e) => {
         e.preventDefault();
 
         if (isEditing) {
-            put(`/admin/pemasok/${currentId}`, {
+            put(route("pemasok.update", currentId), {
                 onSuccess: () => closeModal(),
             });
         } else {
-            post("/admin/pemasok", {
+            post(route("pemasok.store"), {
                 onSuccess: () => closeModal(),
             });
         }
@@ -103,11 +103,11 @@ export default function PemasokIndex({ pemasoks }) {
         setIsDeleteModalOpen(true);
     };
 
-    // 5. FUNGSI EKSEKUSI HAPUS
+    // 5. FUNGSI EKSEKUSI HAPUS menggunakan route() helper
     const executeDelete = () => {
         if (!itemToDelete) return;
 
-        destroy(`/admin/pemasok/${itemToDelete.pemasok_id}`, {
+        destroy(route("pemasok.destroy", itemToDelete.pemasok_id), {
             preserveScroll: true,
             onSuccess: () => {
                 setIsDeleteModalOpen(false);
@@ -152,7 +152,7 @@ export default function PemasokIndex({ pemasoks }) {
                                 type="text"
                                 placeholder="Cari nama pemasok..."
                                 value={searchQuery}
-                                onChange={handleSearch} // Pakai fungsi handleSearch
+                                onChange={handleSearch}
                                 className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500"
                             />
                         </div>
@@ -174,6 +174,9 @@ export default function PemasokIndex({ pemasoks }) {
                         <thead className="bg-white text-gray-400 uppercase font-bold border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4 w-16 text-center">
+                                    No
+                                </th>
+                                <th className="px-6 py-4 w-24 text-center">
                                     ID
                                 </th>
                                 <th className="px-6 py-4">
@@ -187,12 +190,15 @@ export default function PemasokIndex({ pemasoks }) {
                         <tbody className="divide-y divide-gray-50">
                             {/* MAPPING MENGGUNAKAN currentData */}
                             {currentData.length > 0 ? (
-                                currentData.map((pemasok) => (
+                                currentData.map((pemasok, index) => (
                                     <tr
                                         key={pemasok.pemasok_id}
                                         className="hover:bg-slate-50 transition-colors"
                                     >
                                         <td className="px-6 py-4 text-center font-bold text-gray-400">
+                                            {startIndex + index + 1}
+                                        </td>
+                                        <td className="px-6 py-4 text-center font-bold text-gray-500">
                                             {pemasok.pemasok_id}
                                         </td>
                                         <td className="px-6 py-4 font-bold text-gray-700">
@@ -209,7 +215,6 @@ export default function PemasokIndex({ pemasoks }) {
                                                 <Edit2 size={16} />
                                             </button>
 
-                                            {/* GANTI ONCLICK MENJADI confirmDelete */}
                                             <button
                                                 onClick={() =>
                                                     confirmDelete(pemasok)
@@ -225,10 +230,12 @@ export default function PemasokIndex({ pemasoks }) {
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan="3"
+                                        colSpan="4"
                                         className="text-center py-12 text-gray-400 font-medium italic"
                                     >
-                                        Tidak ada data pemasok ditemukan.
+                                        {searchQuery
+                                            ? "Tidak ada pemasok yang cocok dengan pencarian."
+                                            : "Tidak ada data pemasok ditemukan."}
                                     </td>
                                 </tr>
                             )}
