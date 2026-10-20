@@ -17,6 +17,7 @@ class Barang extends Model
         'nama_barang',
         'type',
         'pemasok_id',
+        'harga',
         'stok_saat_ini',
         'batas_minimum_stok'
     ];
