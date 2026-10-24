@@ -10,7 +10,9 @@ import {
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
-    Search, // <-- Tambahkan icon Search
+    Search,
+    XCircle,
+    CheckCircle2Icon,
 } from "lucide-react";
 
 export default function Index({ barangs, flash }) {
@@ -193,16 +195,27 @@ export default function Index({ barangs, flash }) {
                                                 {barang.batas_minimum_stok}
                                             </td>
                                             <td className="px-4 py-3 sm:px-6 sm:py-4 text-center">
-                                                {barang.stok_saat_ini <=
-                                                barang.batas_minimum_stok ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-red-50 text-red-700 border border-red-100 animate-pulse">
+                                                {barang.stok_saat_ini <= 0 ? (
+                                                    // 1. STATUS HABIS (Stok = 0)
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                                                        <XCircle size={12} />{" "}
+                                                        Habis
+                                                    </span>
+                                                ) : barang.stok_saat_ini <=
+                                                  barang.batas_minimum_stok ? (
+                                                    // 2. STATUS KRITIS (Stok <= Batas Minimum, tapi lebih dari 0)
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                                                         <AlertTriangle
                                                             size={12}
                                                         />{" "}
                                                         Kritis
                                                     </span>
                                                 ) : (
+                                                    // 3. STATUS AMAN (Stok > Batas Minimum)
                                                     <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-green-50 text-green-700 border border-green-100">
+                                                        <CheckCircle2Icon
+                                                            size={12}
+                                                        />{" "}
                                                         Aman
                                                     </span>
                                                 )}

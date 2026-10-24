@@ -27,6 +27,7 @@ class TransaksiController extends Controller
             ->select(
                 'fact_sales.*',
                 'barangs.nama_barang',
+                'barangs.harga',
                 'tokos.kota as kota_toko',
                 'pembelis.kota as kota_pembeli',
                 'pembelis.alamat',
@@ -157,6 +158,99 @@ class TransaksiController extends Controller
             return back()->with('message', 'Data transaksi berhasil diimpor dan stok telah diperbarui!');
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan saat import: ' . $e->getMessage());
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal_transaksi' => 'required|date',
+            'toko_id'           => 'required|integer',
+            'barang_id'         => 'required|integer',
+            'kota_pembeli'      => 'required|string|max:100',
+            'alamat_pembeli'    => 'required|string|max:255',
+            'jumlah_beli'       => 'required|integer|min:1',
+            'total_harga'       => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $id) {
+                // Asumsi primary key tabel fact_sales adalah 'id'. Sesuaikan jika berbeda (misal: 'sales_id')
+                $fact = DB::table('fact_sales')->where('id', $id)->first();
+                if (!$fact) throw new \Exception('Data transaksi tidak ditemukan.');
+
+                // A. KEMBALIKAN STOK LAMA DULU
+                DB::table('barangs')->where('barang_id', $fact->barang_id)->increment('stok_saat_ini', $fact->jumlah_beli);
+
+                // B. CEK APAKAH STOK BARU MENCUKUPI (Setelah stok lama dikembalikan)
+                $barangBaru = DB::table('barangs')->where('barang_id', $request->barang_id)->first();
+                if ($barangBaru->stok_saat_ini < $request->jumlah_beli) {
+                    throw new \Exception('Stok "' . $barangBaru->nama_barang . '" tidak mencukupi. (Sisa stok: ' . $barangBaru->stok_saat_ini . ')');
+                }
+
+                // C. PROSES DIMENSI WAKTU
+                $date = Carbon::parse($request->tanggal_transaksi);
+                $waktu = DB::table('waktus')
+                    ->where('hari', $date->day)->where('bulan', $date->month)->where('tahun', $date->year)->first();
+
+                $waktuId = $waktu ? $waktu->waktu_id : DB::table('waktus')->insertGetId([
+                    'hari' => $date->day,
+                    'bulan' => $date->month,
+                    'tahun' => $date->year,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], 'waktu_id');
+
+                // D. PROSES DIMENSI LOKASI PEMBELI
+                $pembeli = DB::table('pembelis')
+                    ->where('kota', $request->kota_pembeli)->where('alamat', $request->alamat_pembeli)->first();
+
+                $pembeliId = $pembeli ? $pembeli->pembeli_id : DB::table('pembelis')->insertGetId([
+                    'kota' => $request->kota_pembeli,
+                    'alamat' => $request->alamat_pembeli,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], 'pembeli_id');
+
+                // E. UPDATE FAKTA PENJUALAN
+                DB::table('fact_sales')->where('id', $id)->update([
+                    'barang_id'   => $request->barang_id,
+                    'pembeli_id'  => $pembeliId,
+                    'toko_id'     => $request->toko_id,
+                    'waktu_id'    => $waktuId,
+                    'jumlah_beli' => $request->jumlah_beli,
+                    'total_harga' => $request->total_harga,
+                    'updated_at'  => now(),
+                ]);
+
+                // F. POTONG STOK DENGAN JUMLAH BARU
+                DB::table('barangs')->where('barang_id', $request->barang_id)->decrement('stok_saat_ini', $request->jumlah_beli);
+            });
+
+            return back()->with('message', 'Data transaksi berhasil diperbarui dan stok telah disesuaikan!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    // 6. DELETE TRANSAKSI
+    public function destroy($id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $fact = DB::table('fact_sales')->where('id', $id)->first();
+                if (!$fact) throw new \Exception('Data transaksi tidak ditemukan.');
+
+                // KEMBALIKAN STOK
+                DB::table('barangs')->where('barang_id', $fact->barang_id)->increment('stok_saat_ini', $fact->jumlah_beli);
+
+                // HAPUS TRANSAKSI
+                DB::table('fact_sales')->where('id', $id)->delete();
+            });
+
+            return back()->with('message', 'Transaksi berhasil dihapus & stok telah dikembalikan!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
         }
     }
 }

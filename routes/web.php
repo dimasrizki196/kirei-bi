@@ -83,6 +83,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/manual', [TransaksiController::class, 'store'])->name('store');
             Route::get('/template', [TransaksiController::class, 'downloadTemplate'])->name('template');
             Route::post('/import', [TransaksiController::class, 'import'])->name('import');
+            Route::put('/{id}', [TransaksiController::class, 'update'])->name('update');
+            Route::delete('/{id}', [TransaksiController::class, 'destroy'])->name('destroy');
         });
     });
 });
